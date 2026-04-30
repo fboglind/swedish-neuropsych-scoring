@@ -89,10 +89,13 @@ def main():
     )
 
     from src.thesis_project.embeddings.encoder import MockEmbedder
+    from src.thesis_project.lexical.word_frequency import WordFrequencyProvider
     from src.thesis_project.preprocessing.data_loader import SVF_PATH, load_svf_data
     from src.thesis_project.scoring.svf_scorer import score_svf
 
     data_path = args.data if args.data else SVF_PATH
+
+    frequency_provider = WordFrequencyProvider(source="wordfreq")
 
     # ── 1. Load ──────────────────────────────────────────
     print(f"Loading SVF data from {data_path}...")
@@ -131,7 +134,10 @@ def main():
     records = []
     for p in participants:
         metrics = score_svf(
-            responses=p["responses"], encoder=encoder, threshold=args.threshold
+            responses=p["responses"],
+            encoder=encoder,
+            threshold=args.threshold,
+            frequency_provider=frequency_provider,
         )
         records.append(
             {
@@ -151,6 +157,7 @@ def main():
                 "mean_cluster_size": metrics["mean_cluster_size"],
                 "switch_count": metrics["switch_count"],
                 "max_cluster_size": metrics["max_cluster_size"],
+                "mean_word_frequency": metrics["mean_word_frequency"],
             }
         )
 

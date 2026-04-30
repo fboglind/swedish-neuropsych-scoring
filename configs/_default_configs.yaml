@@ -129,4 +129,20 @@ svf:
 fas:
   data_path: "data/xlsx/sweFAS-syntheticData_v3.xlsx"
   # sheet_name: "FAS_simulation"             # verify sheet name in v3 before re-enabling
-  output_path: "data/processed/fas_scored_results.csv"
+  output_path: "data/processed/fas_results_with_mmse.csv"
+
+# Phase 4c-FAS-Troyer: pre-registered Swedish-orthographic phonemic
+# clustering rules. Document-level lock — any change to this section
+# is a methodological decision, not a tweak.
+fas_clustering:
+  rules:
+    - shared_first_two_letters     # R1
+    - shared_rime                  # R2
+    - vowel_only_substitution      # R3
+  rime_min_length: 2               # guards against single-vowel rime matches
+  homonyms: false                  # Troyer R4 dropped; see PHASE_4C_FAS_TROYER_INSTRUCTIONS.md
+  cluster_size_convention: pakhomov   # singletons count as size 1
+
+fas_frequency:
+  source: wordfreq                 # 'wordfreq' or 'sucx' (requires
+                                   # data/external/sucx_frequencies.csv)

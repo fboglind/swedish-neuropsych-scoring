@@ -129,17 +129,8 @@ def _load_saldo_graph(pickle_path: Path):
     if not pickle_path.exists():
         sys.exit(
             f"ERROR: SALDO graph pickle not found at {pickle_path}. "
-            f"Build it via `python scripts/build_saldo_graph.py` (Phase A) "
-            f"before running Stage 2."
-        )
-    try:
-        from thesis_project.lexical.saldo import SaldoGraph  # noqa: F401
-    except Exception as exc:  # pragma: no cover - phase-dependent
-        sys.exit(
-            f"ERROR: cannot import SaldoGraph: {exc!r}. "
-            f"Phase A must be implemented before Stage 2 can run on real "
-            f"SALDO data. (The unit tests exercise SALDO via a duck-typed "
-            f"mock; production runs require Phase A.)"
+            f"Build it via `python scripts/build_saldo_graph.py` before "
+            f"running Stage 2."
         )
     from thesis_project.lexical.saldo import SaldoGraph
 
@@ -326,9 +317,12 @@ def main(argv: list[str] | None = None) -> int:
     primary_cos = model_cosines[primary_name]
 
     class _NullSaldo:
+        """Used only when --skip-saldo is passed (e.g. fast test runs)."""
+
         def lookup(self, w): return []
         def path_length(self, *a): return None
         def wu_palmer(self, *a): return None
+        def primary_descriptor(self, *a): return None
 
     saldo_for_div = _NullSaldo() if args.skip_saldo else _load_saldo_graph(args.saldo_pickle)
     catalog = compute_divergence_catalog(consolidated, sampled, primary_cos, saldo_for_div)

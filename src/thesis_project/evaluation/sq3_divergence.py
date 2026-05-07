@@ -25,18 +25,19 @@ def _saldo_relation_summary(
 ) -> str:
     """Return a short SALDO-relation summary string for a (target, response) pair.
 
-    Uses ``SaldoGraph``'s public interface only:
-
-    * ``primary(s)`` if available — returns the primary descriptor of a sense.
-    * ``lookup(written_form)``
-    * ``path_length(s1, s2)``
+    Uses ``SaldoGraph``'s public interface: ``lookup``,
+    ``primary_descriptor``, and ``path_length``.
 
     Possible return values:
 
-    * ``mother(t→r)`` — response is the primary descriptor of target.
-    * ``mother(r→t)`` — target is the primary descriptor of response.
+    * ``mother(t→r)`` — response sense is the primary descriptor of a
+      target sense (``target`` is a hyponym of ``response``).
+    * ``mother(r→t)`` — target sense is the primary descriptor of a
+      response sense (``response`` is a hyponym of ``target``).
     * ``m-sibling`` — target and response share a primary descriptor.
-    * ``far`` — both in SALDO but no relation within ``max_hops``.
+    * ``near`` — both in SALDO and a path of length ``≤ max_hops`` exists
+      that does not match any of the more specific relations above.
+    * ``far`` — both in SALDO but no path within ``max_hops`` hops.
     * ``oov(t)`` / ``oov(r)`` / ``oov(both)`` — at least one side OOV.
     """
     t_senses = saldo_graph.lookup(target)
@@ -48,30 +49,18 @@ def _saldo_relation_summary(
     if not r_senses:
         return "oov(r)"
 
-    primary = getattr(saldo_graph, "primary", None)
-    if callable(primary):
-        for ts in t_senses:
-            try:
-                if primary(ts) in r_senses:
-                    return "mother(t→r)"
-            except Exception:
-                pass
-        for rs in r_senses:
-            try:
-                if primary(rs) in t_senses:
-                    return "mother(r→t)"
-            except Exception:
-                pass
-        # m-sibling: shared primary descriptor.
-        try:
-            t_parents = {primary(s) for s in t_senses}
-            r_parents = {primary(s) for s in r_senses}
-            if t_parents & r_parents:
-                return "m-sibling"
-        except Exception:
-            pass
+    t_parents = {saldo_graph.primary_descriptor(s) for s in t_senses}
+    r_parents = {saldo_graph.primary_descriptor(s) for s in r_senses}
+    t_parents.discard(None)
+    r_parents.discard(None)
 
-    # Fallback / final check: shortest path within max_hops.
+    if t_parents & set(r_senses):
+        return "mother(t→r)"
+    if r_parents & set(t_senses):
+        return "mother(r→t)"
+    if t_parents & r_parents:
+        return "m-sibling"
+
     best = None
     for ts in t_senses:
         for rs in r_senses:
@@ -80,11 +69,6 @@ def _saldo_relation_summary(
                 best = pl
     if best is None:
         return "far"
-    if best == 1:
-        # Direct adjacency: prefer the more specific tag if primary() is unavailable.
-        return "mother(t→r)"
-    if best == 2:
-        return "m-sibling"
     if best <= max_hops:
         return "near"
     return "far"

@@ -24,6 +24,9 @@ class _NullSaldoGraph:
     def wu_palmer(self, s1: str, s2: str):
         return None
 
+    def primary_descriptor(self, sense_id: str):
+        return None
+
 
 class _MockSaldoGraph:
     def __init__(self, senses, distances, primaries=None):
@@ -48,7 +51,7 @@ class _MockSaldoGraph:
         d = self._dist.get((s1, s2))
         return None if d is None else 1.0 / (1.0 + d / 2.0)
 
-    def primary(self, sense):
+    def primary_descriptor(self, sense):
         return self._primary.get(sense)
 
 
@@ -132,7 +135,7 @@ def test_saldo_summary_distinguishes_oov_and_relation():
         ("hund..1", "katt..1"): 2,
         ("katt..1", "räv..1"): 2,
     }
-    primaries = {"hund..1": "djur..1", "katt..1": "djur..1"}
+    primaries = {"hund..1": "djur..1", "katt..1": "djur..1", "räv..1": "djur..1"}
     g = _MockSaldoGraph(senses, distances, primaries)
     catalog = compute_divergence_catalog(ratings, sampled, cos, g)
     by_pair = {row["pair_id"]: row["saldo_relation_summary"] for _, row in catalog.iterrows()}
@@ -140,3 +143,40 @@ def test_saldo_summary_distinguishes_oov_and_relation():
     assert by_pair["p2"] == "m-sibling"    # hund and katt share djur as primary
     assert by_pair["p3"] == "oov(r)"        # cykel_oov absent
     assert by_pair["p4"] == "m-sibling"    # katt and räv reachable via 2 hops
+
+
+def test_saldo_summary_with_real_saldo_mini():
+    """End-to-end SALDO relation labels against the real Phase A SaldoGraph."""
+    from thesis_project.lexical.saldo import SaldoGraph
+
+    g = SaldoGraph.from_xml(FIXTURES / "saldo_mini.xml")
+    ratings = pd.DataFrame(
+        {
+            "pair_id": [f"p{i}" for i in range(5)],
+            "rating": [3, 2, 3, 1, 0],
+            "category": ["coordinate"] * 5,
+            "is_compound": [False] * 5,
+        }
+    )
+    sampled = pd.DataFrame(
+        {
+            "pair_id": [f"p{i}" for i in range(5)],
+            "target": ["hund", "hund", "hund", "hund", "hund"],
+            "response": ["katt", "däggdjur", "däggdjur", "sällskap", "ingen_aning"],
+        }
+    )
+    cos = pd.DataFrame(
+        {"pair_id": sampled["pair_id"], "cosine_sim": [0.7, 0.8, 0.9, 0.4, 0.1]}
+    )
+    catalog = compute_divergence_catalog(ratings, sampled, cos, g)
+    by_pair = {row["pair_id"]: row["saldo_relation_summary"] for _, row in catalog.iterrows()}
+    # hund and katt share däggdjur..1 as primary descriptor.
+    assert by_pair["p0"] == "m-sibling"
+    # däggdjur..1 is the primary descriptor of hund..1.
+    assert by_pair["p1"] == "mother(t→r)"
+    assert by_pair["p2"] == "mother(t→r)"
+    # hund's parents are däggdjur..1 / usling..1; sällskap..1's parent is
+    # djur..1, and from hund..1 it's reachable in 3 hops via däggdjur→djur→sällskap.
+    assert by_pair["p3"] == "near"
+    # ingen_aning is not in saldo_mini.
+    assert by_pair["p4"] == "oov(r)"

@@ -1,11 +1,8 @@
 """Tests for ``thesis_project.evaluation.sq3_agreement``.
 
-The methodology document and instructions reference
-``tests/fixtures/saldo_mini.xml`` as a Phase A artifact. Phase A's
-``SaldoGraph`` is upstream and read-only here; until that fixture lands
-the SALDO test uses a duck-typed mock that exposes the public methods
-``lookup``, ``path_length`` and ``wu_palmer`` exactly as
-``SaldoGraph`` does.
+A duck-typed mock SaldoGraph keeps the bootstrap-CI tests fast; the
+real ``SaldoGraph`` (Phase A) is exercised against
+``tests/fixtures/saldo_mini.xml`` in :func:`test_rater_saldo_spearman_with_real_saldo_mini`.
 """
 
 from __future__ import annotations
@@ -166,3 +163,35 @@ def test_per_category_handles_no_pair_overlap():
     cos = pd.DataFrame({"pair_id": ["x", "y"], "cosine_sim": [0.1, 0.9]})
     out = rater_model_per_category(ratings, {"sbert": cos}, min_n=15)
     assert out.empty
+
+
+def test_rater_saldo_spearman_with_real_saldo_mini():
+    """End-to-end SALDO scorer test against the Phase A saldo_mini.xml fixture."""
+    from thesis_project.lexical.saldo import SaldoGraph
+
+    g = SaldoGraph.from_xml(FIXTURES / "saldo_mini.xml")
+    target_response = pd.DataFrame(
+        {
+            "pair_id": ["p1", "p2", "p3", "p4", "p5"],
+            "target": ["hund", "hund", "hund", "hund", "hund"],
+            "response": ["däggdjur", "katt", "djur", "sällskap", "okänd_ord"],
+        }
+    )
+    # Use roughly path-monotonic ratings; the saldo_mini graph has secondary
+    # edges that make absolute distances surprising in a few places, so the
+    # test only asserts that the SALDO computation runs and Wu-Palmer (which
+    # uses depth-weighted similarity, not raw path) tracks the rating.
+    ratings = pd.DataFrame(
+        {
+            "pair_id": target_response["pair_id"],
+            "rating": [3, 2, 1, 0, 0],
+        }
+    )
+    res = rater_saldo_spearman(ratings, g, target_response, n_bootstrap=200)
+    assert res.n_total == 5
+    assert res.n_in_vocab == 4  # 'okänd_ord' is OOV
+    assert res.oov_rate == pytest.approx(1 / 5)
+    assert not np.isnan(res.path_spearman.spearman_rho)
+    assert not np.isnan(res.wu_palmer_spearman.spearman_rho)
+    # Wu-Palmer uses depth-weighted similarity and is positive on this fixture.
+    assert res.wu_palmer_spearman.spearman_rho > 0

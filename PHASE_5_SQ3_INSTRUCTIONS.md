@@ -31,8 +31,9 @@ them in the relevant module docstrings exactly as stated.
 applied once, deterministically, and the resulting eligible-pair count is
 reported.
 
-**Stratification model.** Cosine similarity from `bnt_scored_results_-
-SwedishSBERT.csv` is the single stratification axis. Quartiles are computed
+**Stratification model.** Cosine similarity from
+`bnt_scored_results_Swedish-SBERT.csv` is the single stratification axis.
+Quartiles are computed
 on the eligible-pair set. The four other model CSVs are *not* used for
 stratification, only for rater-model agreement reporting in Stage 2.
 
@@ -154,7 +155,7 @@ the eligibility-filtered set. CLI:
 
 ```
 python scripts/sq3_eligibility_probe.py \
-    --input data/processed/bnt_scored_results_sbert.csv\
+    --input data/processed/bnt_scored_results_Swedish-SBERT.csv\
     --output-dir data/processed/sq3/
 ```
 
@@ -220,7 +221,7 @@ sensitive columns. The test asserts the column set is exactly
 
 ```
 python scripts/sq3_sample_pairs.py \
-    --input data/processed/bnt_scored_results_sbert.csv \
+    --input data/processed/bnt_scored_results_Swedish-SBERT.csv \
     --target-size 200 \
     --raters FB,collaborator \
     --output-dir data/processed/sq3/
@@ -517,12 +518,12 @@ A successful run of this phase produces:
 1. All existing tests still pass.
 2. New tests in all four `test_sq3_*.py` files pass under both
    `pytest -m "not heavy"` and full `pytest`.
-3. `python scripts/sq3_eligibility_probe.py --input data/processed/bnt_scored_results_sbert.csv --output-dir /tmp/sq3` runs to completion
+3. `python scripts/sq3_eligibility_probe.py --input data/processed/bnt_scored_results_Swedish-SBERT.csv --output-dir /tmp/sq3` runs to completion
    in under 10 seconds and produces `/tmp/sq3/sq3_eligibility_probe.md`
    containing: total rows, eligible rows, exclusion breakdown,
    quartile cutpoints, and the 4×4 quartile-by-diagnosis contingency
    table.
-4. `python scripts/sq3_sample_pairs.py --input data/processed/bnt_scored_results_sbert.csv --target-size 200 --raters FB --output-dir
+4. `python scripts/sq3_sample_pairs.py --input data/processed/bnt_scored_results_Swedish-SBERT.csv --target-size 200 --raters FB --output-dir
    /tmp/sq3` produces:
    - `/tmp/sq3/sq3_sampled_pairs.csv` (200 rows, all metadata)
    - `/tmp/sq3/sq3_ratings_FB.csv` (200 rows, blinded columns
@@ -535,7 +536,7 @@ A successful run of this phase produces:
    row orders.
 7. `python scripts/sq3_analyze.py --ratings-dir tests/fixtures
    --branch multi --sampled-pairs tests/fixtures/sq3_mock_sampled.csv
-   --models data/processed/bnt_scored_results_sbert.csv --output-dir
+   --models data/processed/bnt_scored_results_Swedish-SBERT.csv --output-dir
    /tmp/sq3/reports` runs end-to-end on the fixtures and produces:
    - `sq3_reliability_report.md`
    - `sq3_agreement_report.md`

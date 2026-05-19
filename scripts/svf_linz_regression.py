@@ -370,6 +370,21 @@ def write_outputs(
         for r in results
     ]).to_csv(paths["kappa"], index=False)
 
+
+    # Persist per-participant held-out predictions, one file per model, so the
+    # predicted-vs-actual figure can be regenerated from data (filter-free).
+    for r in results:
+        slug = r["label"].lower()  # "svr", "ridge"
+        ppath = output_dir / f"linz_predictions_{slug}.csv"
+        pd.DataFrame({
+            "diagnosis": [str(d) for d in r["diagnosis"]],
+            "mmse_actual": [float(v) for v in r["y_true"]],
+            "mmse_pred": [float(v) for v in r["predictions"]],
+        }).to_csv(ppath, index=False)
+        paths[f"predictions_{slug}"] = ppath
+
+
+
     paths["scatter"] = figure_dir / "svf_predicted_vs_actual.png"
     fig, axes = plt.subplots(1, len(results), figsize=(6 * len(results), 5),
                              squeeze=False)

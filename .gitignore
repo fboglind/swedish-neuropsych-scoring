@@ -66,4 +66,6 @@ data/processed/sq3/sq3_ratings_*.csv
 !tests/fixtures/
 !tests/fixtures/**/*.csv
 !tests/fixtures/**/*.xml
+# Ignore dirs
 thesis/
+figures/

@@ -53,6 +53,7 @@ from thesis_project.evaluation.sq3_reliability import (
 )
 
 SALDO_PICKLE_DEFAULT = Path("data/lexical/saldo.pkl")
+DEFAULT_PRIMARY_MODEL_PATTERN = "Swedish-SBERT"
 
 
 def _validate_ratings_dir(rating_files: list[Path], expected_pairs: set[str]) -> None:
@@ -74,6 +75,32 @@ def _validate_ratings_dir(rating_files: list[Path], expected_pairs: set[str]) ->
             sys.exit(
                 f"ERROR: {path} has rating(s) outside {sorted(VALID_RATINGS)}: {invalid}."
             )
+        # Where rating is set, category and is_compound must also be set.
+        # A row with rating but no category/flag crashes the kappa step
+        # with an opaque sklearn mixed-type sort error; catch it here.
+        rated_mask = df["rating"].notna()
+        missing_cat = df.loc[
+            rated_mask & df["category"].isna(), "pair_id"
+        ].tolist()
+        if missing_cat:
+            sys.exit(
+                f"ERROR: {path} has rating but missing category for "
+                f"pair_id(s): {missing_cat[:10]}"
+                f"{'...' if len(missing_cat) > 10 else ''} "
+                f"({len(missing_cat)} total). Fill all three judgment "
+                f"fields (rating, category, is_compound) for any rated "
+                f"pair before running Stage 2."
+            )
+        missing_comp = df.loc[
+            rated_mask & df["is_compound"].isna(), "pair_id"
+        ].tolist()
+        if missing_comp:
+            sys.exit(
+                f"ERROR: {path} has rating but missing is_compound flag "
+                f"for pair_id(s): {missing_comp[:10]}"
+                f"{'...' if len(missing_comp) > 10 else ''} "
+                f"({len(missing_comp)} total)."
+            )
         bad_cats = sorted(
             c for c in df["category"].dropna().unique() if c not in VALID_CATEGORIES
         )
@@ -88,6 +115,39 @@ def _validate_ratings_dir(rating_files: list[Path], expected_pairs: set[str]) ->
                 f"ERROR: {path} is missing pair_id(s) (showing up to 10): "
                 f"{missing}."
             )
+
+
+def _pick_primary_model(
+    model_cosines: dict[str, pd.DataFrame],
+    override: str | None,
+) -> str:
+    """Pick the primary model deterministically.
+
+    The methodology document names Swedish SBERT as the primary
+    stratification model and the primary scorer for the rater-model
+    agreement headline. If --primary-model is given, that wins.
+    Otherwise, the first model whose stem contains
+    DEFAULT_PRIMARY_MODEL_PATTERN is used. Fallback is first-in-dict
+    order, with a printed warning so a misconfigured run is observable
+    rather than silent.
+    """
+    if override is not None:
+        if override not in model_cosines:
+            sys.exit(
+                f"ERROR: --primary-model {override!r} not found among "
+                f"loaded models. Available: {sorted(model_cosines)}"
+            )
+        return override
+    for name in model_cosines:
+        if DEFAULT_PRIMARY_MODEL_PATTERN in name:
+            return name
+    fallback = next(iter(model_cosines))
+    print(
+        f"WARNING: no model containing {DEFAULT_PRIMARY_MODEL_PATTERN!r} "
+        f"found among {sorted(model_cosines)}; using {fallback!r} as "
+        f"primary."
+    )
+    return fallback
 
 
 def _load_consolidated_ratings(
@@ -229,6 +289,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip the SALDO scorer comparison (use only when Phase A "
         "is not yet available; tests exercise this path).",
     )
+    parser.add_argument(
+        "--primary-model",
+        type=str,
+        default=None,
+        help=(
+            "Stem of the model CSV to treat as primary for the headline "
+            "rater-model statistic and the divergence catalog "
+            "(e.g. 'bnt_scored_results_Swedish-SBERT'). Defaults to the "
+            f"first model whose stem contains "
+            f"{DEFAULT_PRIMARY_MODEL_PATTERN!r}."
+        ),
+    )
     args = parser.parse_args(argv)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -280,7 +352,23 @@ def main(argv: list[str] | None = None) -> int:
                 right_on=["target", "response"],
                 how="inner",
             )
-        model_cosines[p.stem] = df[["pair_id", "cosine_sim"]].copy()
+        # Dedup to one row per pair_id. The cosine for a given
+        # (target, response) string pair is invariant across the
+        # participants who produced it, so keep-first is well-defined.
+        # Without this step, the row-level merge inflates n by the
+        # average participant-per-pair count (~4 on synthetic data),
+        # biasing the rater-model Spearman toward heavily-duplicated
+        # pairs and narrowing the bootstrap CIs misleadingly.
+        model_cosines[p.stem] = (
+            df[["pair_id", "cosine_sim"]]
+            .drop_duplicates(subset="pair_id", keep="first")
+            .copy()
+        )
+
+    # Resolve the primary model BEFORE any analysis consumes it, so the
+    # choice is deterministic and matches the methodology document.
+    primary_name = _pick_primary_model(model_cosines, args.primary_model)
+    print(f"Primary model: {primary_name}")
 
     overall = rater_model_spearman(consolidated, model_cosines)
     per_q = rater_model_per_quartile(consolidated, sampled, model_cosines)
@@ -313,7 +401,6 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Step 6: divergence catalog.
-    primary_name = next(iter(model_cosines))
     primary_cos = model_cosines[primary_name]
 
     class _NullSaldo:

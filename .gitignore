@@ -21,7 +21,7 @@ env/
 # Ignore dataset and output files
 data/processed/
 *.csv
-*.xslx
+*.xlsx
 *.tsv
 *.json
 *.jsonl
@@ -69,3 +69,4 @@ data/processed/sq3/sq3_ratings_*.csv
 # Ignore dirs
 thesis/
 figures/
+backup/

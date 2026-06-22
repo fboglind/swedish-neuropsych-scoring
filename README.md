@@ -3,13 +3,13 @@
 Embedding-based graded scoring of paraphasic errors in Swedish neuropsychological
 language tests. 
 
-Repo for master's thesis *Embedding-Based Graded Scoring of Paraphasic Errors in Neuropsychological Language Tests*. Contains scoring pipelines, evaluation code, and synthetic data used in that work.
+Repo for master's thesis *Embedding-Based Graded Scoring of Paraphasic Errors in Neuropsychological Language Tests* containing scoring pipelines, evaluation code, and synthetic data.
 
 The pipelines score three tests:
 
 - **BNT** — Boston Naming Test (confrontation naming), graded semantic scoring via
   embedding cosine similarity against a gold target.
-- **SVF** — semantic verbal fluency (animals), word counts plus embedding-based
+- **SVF** — Semantic Verbal Fluency (animals), word counts plus embedding-based
   cluster/switch metrics.
 - **FAS** — phonemic verbal fluency (F, A, S), count-based scoring plus
   Swedish-orthographic phonemic clustering.
@@ -69,7 +69,7 @@ citable version** of the synthetic dataset is archived at Språkbanken Text
 
 Generated outputs (scored CSVs, figures, embedding caches) are written to `data/processed/` and are reproducible from the pipelines above.
 
-Lexical resources (SALDO) are **not** redistributed here due to their own licensing. `data/lexical/` is git-ignored; download the resources from [Språkbanken Text](https://spraakbanken.gu.se/resurser) and build
+Lexical resources (SALDO etc.) are **not** redistributed here due to their own licensing (`data/lexical/` is git-ignored), but are available from [Språkbanken Text](https://spraakbanken.gu.se/resurser) and build
 the SALDO graph with:
 
 ```bash
@@ -134,4 +134,4 @@ not require the full lexical resources.
 
 ## License
 
-See [LICENSE](LICENSE).
+See [LICENSE](LICENSE (MIT)).

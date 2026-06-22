@@ -65,8 +65,7 @@ The synthetic datasets are in `data/xlsx/`:
 
 These are committed here for convenience and reproducibility. The **canonical,
 citable version** of the synthetic dataset is archived at Språkbanken Text
-(Kokkinakis, 2026): `<INSERT SPRÅKBANKEN DOI>`. Cite that DOI, not this
-repository, when referring to the data.
+(Kokkinakis, 2026): `https://doi.org/10.23695/06j6-0j33.
 
 Generated outputs (scored CSVs, figures, embedding caches) are written to `data/processed/` and are reproducible from the pipelines above.
 
